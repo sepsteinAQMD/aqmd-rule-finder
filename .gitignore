@@ -1,0 +1,20 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# Local runtime data — generated on each user's machine at startup
+# (PDFs, database, and saved Python path are NOT committed to the repo)
+.python_path.txt
+
+# PyInstaller build output
+build/
+dist/
+*.spec
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
