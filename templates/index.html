@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AQMD Rule Finder</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="header-title">
+      <h1>AQMD Rule Finder</h1>
+      <span class="header-subtitle">South Coast Air Quality Management District</span>
+    </div>
+    <div class="header-actions">
+      <div id="status-badge" class="status-badge status-loading">
+        <span class="status-dot"></span>
+        <span id="status-text">Initializing...</span>
+      </div>
+      <button id="refresh-btn" class="btn btn-outline" title="Check for updated rules from AQMD website">
+        &#8635; Check for Updates
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="main-content">
+
+  <!-- Search Section -->
+  <section class="search-section">
+    <div class="search-box-wrap">
+      <label for="search-input" class="search-label">
+        Search by facility type, operation, equipment, chemical, or topic
+      </label>
+      <div class="search-row">
+        <div class="search-input-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input
+            type="text"
+            id="search-input"
+            class="search-input"
+            placeholder="e.g. auto body shop, pharmaceutical manufacturing, boiler, VOC coating..."
+            autocomplete="off"
+            spellcheck="false"
+          >
+          <button id="clear-btn" class="clear-btn" title="Clear search" style="display:none">&#x2715;</button>
+        </div>
+        <button id="search-btn" class="btn btn-primary">Search</button>
+      </div>
+      <div class="search-hints">
+        <span class="hint-label">Examples:</span>
+        <button class="hint-chip" data-query="auto body shop">auto body shop</button>
+        <button class="hint-chip" data-query="boiler">boiler</button>
+        <button class="hint-chip" data-query="pharmaceutical manufacturing">pharmaceutical</button>
+        <button class="hint-chip" data-query="spray coating">spray coating</button>
+        <button class="hint-chip" data-query="petroleum refinery">petroleum refinery</button>
+        <button class="hint-chip" data-query="dry cleaning">dry cleaning</button>
+        <button class="hint-chip" data-query="solvent">solvent</button>
+        <button class="hint-chip" data-query="food processing">food processing</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Progress Bar (shown during indexing) -->
+  <div id="progress-section" class="progress-section" style="display:none">
+    <div class="progress-card">
+      <div class="progress-header">
+        <span id="progress-phase-icon">&#x23F3;</span>
+        <span id="progress-message">Starting up...</span>
+      </div>
+      <div class="progress-bar-wrap">
+        <div id="progress-bar" class="progress-bar" style="width:0%"></div>
+      </div>
+      <div id="progress-detail" class="progress-detail"></div>
+    </div>
+  </div>
+
+  <!-- Results Section -->
+  <section id="results-section" class="results-section" style="display:none">
+    <div class="results-header">
+      <span id="results-summary" class="results-summary"></span>
+      <div class="results-controls">
+        <label class="view-label">Group by rule</label>
+        <select id="sort-select" class="sort-select">
+          <option value="relevance">Sort: Relevance</option>
+          <option value="regulation">Sort: Regulation</option>
+          <option value="rule_number">Sort: Rule Number</option>
+        </select>
+      </div>
+    </div>
+    <div id="results-list" class="results-list"></div>
+    <div id="load-more-wrap" style="display:none;text-align:center;margin-top:1.5rem">
+      <button id="load-more-btn" class="btn btn-outline">Load more results</button>
+    </div>
+  </section>
+
+  <!-- Empty State -->
+  <div id="empty-state" class="empty-state" style="display:none">
+    <div class="empty-icon">&#128270;</div>
+    <h3>No rules found for "<span id="empty-query"></span>"</h3>
+    <p>Try different keywords, such as the type of equipment, chemicals used, or the specific process name.</p>
+  </div>
+
+  <!-- Welcome / Idle State -->
+  <div id="welcome-state" class="welcome-state">
+    <div class="welcome-icon">&#128218;</div>
+    <h2>Find Applicable AQMD Rules</h2>
+    <p>
+      This tool searches the full text of all South Coast AQMD rules to help you identify
+      regulations that apply to your facility or operation. Rules are fetched directly from
+      the AQMD website and stay up to date automatically.
+    </p>
+    <div class="welcome-tips">
+      <div class="tip-card">
+        <div class="tip-icon">&#127981;</div>
+        <div>
+          <strong>By facility type</strong>
+          <p>Search for "auto body shop", "bakery", "metal plating", "dry cleaner"</p>
+        </div>
+      </div>
+      <div class="tip-card">
+        <div class="tip-icon">&#9881;</div>
+        <div>
+          <strong>By equipment</strong>
+          <p>Search for "boiler", "spray booth", "flare", "cooling tower", "generator"</p>
+        </div>
+      </div>
+      <div class="tip-card">
+        <div class="tip-icon">&#9879;</div>
+        <div>
+          <strong>By chemical or pollutant</strong>
+          <p>Search for "VOC", "NOx", "PM10", "perchloroethylene", "hexavalent chromium"</p>
+        </div>
+      </div>
+    </div>
+    <div id="stats-bar" class="stats-bar" style="display:none">
+      <span id="stats-rules-count"></span>
+      <span class="stats-sep">&bull;</span>
+      <span id="stats-pages-count"></span>
+      <span class="stats-sep">&bull;</span>
+      <span id="stats-updated"></span>
+    </div>
+  </div>
+
+</main>
+
+<!-- PDF Viewer Modal -->
+<div id="pdf-modal" class="pdf-modal" style="display:none" role="dialog" aria-modal="true">
+  <div class="pdf-modal-backdrop" id="pdf-modal-backdrop"></div>
+  <div class="pdf-modal-content">
+    <div class="pdf-modal-header">
+      <div>
+        <div id="pdf-modal-title" class="pdf-modal-title"></div>
+        <div id="pdf-modal-subtitle" class="pdf-modal-subtitle"></div>
+      </div>
+      <div class="pdf-modal-actions">
+        <a id="pdf-open-external" class="btn btn-outline btn-sm" target="_blank" rel="noopener">
+          &#8599; Open in New Tab
+        </a>
+        <button id="pdf-modal-close" class="btn-icon" title="Close">&times;</button>
+      </div>
+    </div>
+    <div class="pdf-embed-wrap">
+      <iframe id="pdf-iframe" class="pdf-iframe" title="Rule PDF"></iframe>
+    </div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
