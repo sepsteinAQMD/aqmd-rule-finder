@@ -27,65 +27,37 @@ The tool requires Python 3.9 or later.
 
 #### Option B — Python is already installed but not on PATH
 
-If you (or your IT department) have already installed Python, `setup.bat` may still fail with "Python is not installed or not on PATH" because Windows doesn't know where to find it. Follow these steps to fix that.
+**You usually do not need to do anything extra.** `setup.bat` automatically searches for Python in the following order:
 
-**1. Find where Python is installed**
+1. Checks whether Python is on your PATH
+2. Scans ~14 common install locations — python.org defaults (Python 3.9–3.13), Anaconda, Miniconda, and system-wide installs
+3. If Python still cannot be found, **it will ask you to type the full path** to your `python.exe`:
 
-Open a Command Prompt (press `Windows + R`, type `cmd`, press Enter) and run:
+```
+Path to python.exe: C:\Users\YourName\AppData\Local\Programs\Python\Python312\python.exe
+```
+
+Paste the path and press Enter. The path is saved automatically so you will not be asked again.
+
+**If you need to find where Python is installed**, open a Command Prompt (`Windows + R`, type `cmd`, press Enter) and run:
 
 ```
 where python
 ```
 
-If that returns nothing, try these common locations manually in File Explorer:
+If that returns nothing, check these common locations in File Explorer:
 
 | Location | Who installed it |
 |----------|-----------------|
-| `C:\Python312\python.exe` | Standard python.org installer |
 | `C:\Users\[YourName]\AppData\Local\Programs\Python\Python312\python.exe` | python.org installer (user-only) |
-| `C:\Users\[YourName]\AppData\Local\miniconda3\python.exe` | Anaconda / Miniconda |
+| `C:\Users\[YourName]\AppData\Local\miniconda3\python.exe` | Miniconda |
+| `C:\Users\[YourName]\AppData\Local\anaconda3\python.exe` | Anaconda (user) |
 | `C:\ProgramData\anaconda3\python.exe` | Anaconda (all users) |
+| `C:\ProgramData\miniconda3\python.exe` | Miniconda (all users) |
+| `C:\Python312\python.exe` | Standard python.org installer |
 | `C:\Program Files\Python312\python.exe` | System-wide python.org install |
 
-Replace `312` with your version number (e.g., `311` for Python 3.11). If you find `python.exe`, note the folder it is in — you will need it in the next step.
-
-**2. Add Python to your PATH (permanent fix)**
-
-1. Press `Windows + S` and search for **"Edit the system environment variables"**, then click it
-2. Click **"Environment Variables…"** at the bottom of the window
-3. Under **"User variables for [your name]"**, find the variable named **Path** and double-click it
-4. Click **"New"** and paste the folder path where you found `python.exe`
-   - Example: `C:\Users\YourName\AppData\Local\Programs\Python\Python312`
-5. Click **"New"** again and add the `Scripts` subfolder in the same location
-   - Example: `C:\Users\YourName\AppData\Local\Programs\Python\Python312\Scripts`
-6. Click **OK** on all open windows to save
-7. **Close and reopen** any Command Prompt windows — old ones won't see the change
-
-**3. Verify it worked**
-
-Open a new Command Prompt and type:
-
-```
-python --version
-```
-
-You should see something like `Python 3.12.0`. Then re-run `setup.bat`.
-
-**Alternative: run setup without changing PATH**
-
-If you would rather not change system settings, you can run setup by typing the full path to Python directly. Open a Command Prompt in the `aqmd-rule-finder` folder and run:
-
-```
-"C:\Users\YourName\AppData\Local\Programs\Python\Python312\python.exe" -m pip install -r requirements.txt
-```
-
-Then to start the tool:
-
-```
-"C:\Users\YourName\AppData\Local\Programs\Python\Python312\python.exe" app.py
-```
-
-Replace the path with wherever your `python.exe` actually lives.
+Replace `312` with your version number (e.g., `311` for Python 3.11). Once you have the path, paste it when `setup.bat` asks.
 
 ### Step 2 — Install the tool's dependencies (first time only)
 
@@ -360,7 +332,7 @@ Close the browser tab, then close the Command Prompt window (or press **Ctrl+C**
 ## Troubleshooting
 
 **The tool won't start / "Python is not installed" error:**
-Run `setup.bat` first. If Python isn't found, install it from python.org and ensure "Add Python to PATH" is checked during installation.
+Run `setup.bat` first — it automatically searches common install locations and will ask for the path if needed. If Python is not installed at all, download it from python.org. Checking "Add Python to PATH" during installation is convenient but not required, since `setup.bat` can locate Python without it.
 
 **Browser doesn't open automatically:**
 Open your browser manually and go to `http://127.0.0.1:5731`
