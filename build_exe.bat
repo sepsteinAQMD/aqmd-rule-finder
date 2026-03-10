@@ -90,9 +90,11 @@ if errorlevel 1 (
     exit /b 1
 )
 
-:: ── Copy user guide into the dist folder ──────────────────
+:: ── Copy user guide and generate PDF into the dist folder ─
 copy /Y "EXE-USER-GUIDE.md" "dist\AQMD Rule Finder\User Guide.md" >nul
 echo Copied User Guide.md to dist folder.
+"%PYTHON_EXE%" make_pdf.py
+echo Generated User Guide.pdf in dist folder.
 
 echo.
 echo ============================================
