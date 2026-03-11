@@ -287,3 +287,79 @@ def test_sanitize_fts_query_special_chars():
     # Should not crash or return invalid FTS syntax
     result = database._sanitize_fts_query("(test) AND OR")
     assert isinstance(result, str)
+
+
+# ── Synonym expansion ──────────────────────────────────
+
+def test_sanitize_auto_body_shop_expands():
+    """'auto body shop' should expand to include 'automotive refinishing'."""
+    result = database._sanitize_fts_query("auto body shop")
+    assert "automotive" in result
+    assert "refinishing" in result
+    # Original words must still be present
+    assert "auto" in result
+    assert "body" in result
+
+
+def test_sanitize_gas_station_expands():
+    """'gas station' should expand to include 'gasoline dispensing'."""
+    result = database._sanitize_fts_query("gas station")
+    assert "gasoline" in result
+    assert "dispensing" in result
+
+
+def test_sanitize_gas_stations_plural_expands():
+    result = database._sanitize_fts_query("gas stations")
+    assert "gasoline" in result
+    assert "dispensing" in result
+
+
+def test_sanitize_no_synonym_unchanged():
+    """Terms without synonyms should produce a simple AND query with no OR."""
+    result = database._sanitize_fts_query("boiler")
+    assert "boiler" in result
+    assert " OR " not in result
+
+
+def test_sanitize_dry_cleaner_expands():
+    result = database._sanitize_fts_query("dry cleaner")
+    assert "perchloroethylene" in result
+
+
+def test_sanitize_restaurant_expands():
+    result = database._sanitize_fts_query("restaurant")
+    assert "cooking" in result or "food" in result
+
+
+def test_synonym_search_finds_automotive_refinishing(tmp_db):
+    """Searching 'auto body shop' should find content about automotive refinishing."""
+    with database.get_connection(tmp_db) as conn:
+        rule_id = database.upsert_rule(
+            conn, "1151", "Automotive Refinishing Operations", "XI", "Source Specific",
+            "https://aqmd.gov/rule-1151.pdf", "2022"
+        )
+        database.insert_page(conn, rule_id, 1,
+            "This rule applies to automotive refinishing operations including the "
+            "application of coatings to motor vehicles.")
+        database.mark_rule_indexed(conn, rule_id)
+
+    results = database.search_rules("auto body shop", db_path=tmp_db)
+    assert results["total"] > 0
+    assert any(r["rule_number"] == "1151" for r in results["results"])
+
+
+def test_synonym_search_finds_gasoline_dispensing(tmp_db):
+    """Searching 'gas stations' should find content about gasoline dispensing."""
+    with database.get_connection(tmp_db) as conn:
+        rule_id = database.upsert_rule(
+            conn, "461", "Gasoline Transfer and Dispensing", "IV", "Prohibitions",
+            "https://aqmd.gov/rule-461.pdf", "2020"
+        )
+        database.insert_page(conn, rule_id, 1,
+            "This rule applies to gasoline dispensing facilities including retail "
+            "service stations and fleet fueling operations.")
+        database.mark_rule_indexed(conn, rule_id)
+
+    results = database.search_rules("gas stations", db_path=tmp_db)
+    assert results["total"] > 0
+    assert any(r["rule_number"] == "461" for r in results["results"])
