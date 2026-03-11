@@ -39,6 +39,7 @@
   const statsRules     = document.getElementById('stats-rules-count');
   const statsPages     = document.getElementById('stats-pages-count');
   const statsUpdated   = document.getElementById('stats-updated');
+  const exportCsvBtn   = document.getElementById('export-csv-btn');
   const pdfModal       = document.getElementById('pdf-modal');
   const pdfIframe      = document.getElementById('pdf-iframe');
   const pdfModalTitle  = document.getElementById('pdf-modal-title');
@@ -273,6 +274,55 @@
 
     return card;
   }
+
+  // ── CSV Export ─────────────────────────────────────────
+  function csvField(val) {
+    const s = String(val || '');
+    if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  }
+
+  function exportCsv() {
+    if (!currentQuery) return;
+    exportCsvBtn.disabled = true;
+    exportCsvBtn.textContent = 'Exporting\u2026';
+
+    const params = new URLSearchParams({ q: currentQuery, limit: 500, offset: 0 });
+    fetch('/api/search?' + params)
+      .then(r => r.json())
+      .then(data => {
+        const rows = data.results || [];
+        const lines = [
+          ['Rule Number', 'Title', 'Regulation', 'Amendment Date', 'PDF URL'].join(',')
+        ];
+        rows.forEach(function (rule) {
+          lines.push([
+            csvField(rule.rule_number),
+            csvField(rule.title),
+            csvField('Regulation ' + rule.regulation_num + ' \u2014 ' + (rule.regulation_name || '')),
+            csvField(rule.amendment_date || ''),
+            csvField(rule.pdf_url),
+          ].join(','));
+        });
+        const blob = new Blob([lines.join('\r\n')], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'AQMD_rules_' + currentQuery.replace(/[^a-z0-9]/gi, '_').slice(0, 40) + '.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+        exportCsvBtn.disabled = false;
+        exportCsvBtn.innerHTML = '&#8659; Export CSV';
+      })
+      .catch(function () {
+        exportCsvBtn.disabled = false;
+        exportCsvBtn.innerHTML = '&#8659; Export CSV';
+      });
+  }
+
+  exportCsvBtn.addEventListener('click', exportCsv);
 
   // ── PDF Viewer ─────────────────────────────────────────
   function openPdf(url, page, title, subtitle, externalUrl) {
