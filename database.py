@@ -3,9 +3,56 @@ SQLite database operations for AQMD Rule Finder.
 Uses FTS5 for full-text search across rule PDF content.
 """
 
+import re
 import sqlite3
 import os
 from contextlib import contextmanager
+
+
+# ---------------------------------------------------------------------------
+# Synonym / concept expansion map.
+# Each entry: (phrase_to_match_in_query, [synonym_phrases_to_also_search]).
+# Matched case-insensitively as substrings of the user's query.
+# Lets natural language like "auto body shop" find AQMD term "automotive refinishing".
+# ---------------------------------------------------------------------------
+SYNONYM_MAP = [
+    # Automotive / body shops → AQMD: automotive refinishing
+    ("auto body shop",   ["automotive refinishing"]),
+    ("auto body shops",  ["automotive refinishing"]),
+    ("body shop",        ["automotive refinishing"]),
+    ("auto body",        ["automotive refinishing"]),
+    ("car painting",     ["automotive refinishing", "surface coating"]),
+    ("spray painting",   ["spray coating", "surface coating"]),
+    # Gas stations → AQMD: gasoline dispensing
+    ("gas stations",     ["gasoline dispensing"]),
+    ("gas station",      ["gasoline dispensing"]),
+    ("service station",  ["gasoline dispensing"]),
+    ("fueling station",  ["gasoline dispensing"]),
+    ("filling station",  ["gasoline dispensing"]),
+    # Dry cleaners
+    ("dry cleaners",     ["dry cleaning", "perchloroethylene"]),
+    ("dry cleaner",      ["dry cleaning", "perchloroethylene"]),
+    # Metal / chrome
+    ("chrome shop",      ["chrome plating", "hexavalent chromium"]),
+    ("metal shop",       ["metal finishing", "electroplating"]),
+    ("metal plating",    ["electroplating", "metal finishing"]),
+    # Restaurants / food
+    ("restaurants",      ["commercial cooking", "food processing"]),
+    ("restaurant",       ["commercial cooking", "food processing"]),
+    # Power generation
+    ("power plants",     ["stationary turbine", "combustion turbine"]),
+    ("power plant",      ["stationary turbine", "combustion turbine"]),
+    ("diesel generator", ["emergency generator", "stationary engine"]),
+    # Paint shops
+    ("paint shops",      ["surface coating", "spray coating"]),
+    ("paint shop",       ["surface coating", "spray coating"]),
+    # Oil refineries
+    ("oil refineries",   ["petroleum refinery"]),
+    ("oil refinery",     ["petroleum refinery"]),
+    # Asphalt
+    ("asphalt plants",   ["asphalt paving"]),
+    ("asphalt plant",    ["asphalt paving"]),
+]
 
 
 def get_db_path():
@@ -270,22 +317,48 @@ def _fallback_search(conn, query, limit, offset):
     return {"results": results, "total": len(results), "query": query}
 
 
-def _sanitize_fts_query(query):
-    """Convert a plain text query into a safe FTS5 query."""
-    # Strip leading/trailing whitespace
-    query = query.strip()
-    if not query:
+def _sanitize_fts_query(raw_query):
+    """
+    Convert a plain-text query into a safe FTS5 query string.
+
+    Performs synonym expansion so natural phrases (e.g. 'auto body shop')
+    also match AQMD-specific terminology (e.g. 'automotive refinishing').
+    Returns an OR-of-AND-groups expression when synonyms are found, or a
+    simple AND-group otherwise.
+    """
+    raw_query = raw_query.strip()
+    if not raw_query:
         return ""
 
-    # Remove FTS5 special characters that could cause syntax errors
-    # Keep alphanumeric, spaces, hyphens
-    import re
-    words = re.findall(r'[A-Za-z0-9\-]+', query)
-    if not words:
+    def to_and_group(text):
+        """Return an FTS5 AND-group for the words in *text*, or None if empty."""
+        words = [w for w in re.findall(r'[A-Za-z0-9\-]+', text) if len(w) >= 2]
+        if not words:
+            return None
+        return " AND ".join(f'"{w}"' for w in words)
+
+    base_group = to_and_group(raw_query)
+    if not base_group:
         return ""
 
-    # Build a query that matches documents containing all the words
-    return " AND ".join(f'"{w}"' for w in words if len(w) >= 2)
+    lower = raw_query.lower()
+    extra_groups = []
+    seen = {base_group}
+
+    # Match longest phrases first to avoid redundant sub-phrase matches
+    for phrase, expansions in sorted(SYNONYM_MAP, key=lambda x: -len(x[0])):
+        if phrase in lower:
+            for exp in expansions:
+                g = to_and_group(exp)
+                if g and g not in seen:
+                    extra_groups.append(g)
+                    seen.add(g)
+
+    if not extra_groups:
+        return base_group
+
+    all_groups = [base_group] + extra_groups
+    return " OR ".join(f"({g})" for g in all_groups)
 
 
 def get_stats(db_path=None):
