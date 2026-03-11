@@ -68,7 +68,7 @@ def api_status():
 def api_search():
     query = request.args.get("q", "").strip()
     try:
-        limit = max(1, min(200, int(request.args.get("limit", 50))))
+        limit = max(1, min(500, int(request.args.get("limit", 50))))
         offset = max(0, int(request.args.get("offset", 0)))
     except ValueError:
         limit, offset = 50, 0
