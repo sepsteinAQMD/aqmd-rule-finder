@@ -62,20 +62,26 @@
       // SSE dropped — fall back to polling
       sseSource.close();
       sseSource = null;
-      setTimeout(pollStatus, 3000);
+      schedulePoll(3000);
     };
   }
 
+  function schedulePoll(delay) {
+    setTimeout(pollStatus, delay);
+  }
+
   function pollStatus() {
+    // Skip if SSE is active — it will keep us updated
+    if (sseSource) return;
     fetch('/api/status')
       .then(r => r.json())
       .then(data => {
         updateProgress(data);
-        if (data.phase === 'downloading' || data.phase === 'scanning') {
-          setTimeout(pollStatus, 2000);
-        }
+        // Keep polling: slow down only when fully done or errored
+        var done = data.phase === 'done' || data.phase === 'error';
+        schedulePoll(done ? 30000 : 2000);
       })
-      .catch(() => setTimeout(pollStatus, 5000));
+      .catch(function () { schedulePoll(5000); });
   }
 
   function updateProgress(data) {
@@ -426,6 +432,12 @@
   }
 
   // ── Init ───────────────────────────────────────────────
+  // Fetch status immediately so the badge updates before SSE connects
+  fetch('/api/status')
+    .then(function (r) { return r.json(); })
+    .then(function (data) { updateProgress(data); })
+    .catch(function () {});
+
   startProgressStream();
   searchInput.focus();
 
