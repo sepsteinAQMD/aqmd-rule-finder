@@ -143,11 +143,6 @@ def api_progress_stream():
                 yield f"data: {json.dumps(combined)}\n\n"
                 last_state = dict(combined)
             time.sleep(1)
-            # Stop streaming if done
-            if state.get("phase") in ("done", "error", "idle") and last_state is not None:
-                # Send one final update then keep alive (client reconnects)
-                yield f"data: {json.dumps({**combined, 'final': True})}\n\n"
-                time.sleep(5)
 
     return Response(generate(), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
