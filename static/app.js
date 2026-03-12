@@ -98,7 +98,7 @@
       statusText.textContent = `${indexed} rules ready`;
     } else if (phase === 'error') {
       statusBadge.classList.add('status-error');
-      statusText.textContent = 'Error';
+      statusText.textContent = message ? `Error: ${message}` : 'Error';
     } else if (phase === 'idle') {
       statusBadge.classList.add('status-loading');
       statusText.textContent = 'Starting…';
