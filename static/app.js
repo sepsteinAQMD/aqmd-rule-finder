@@ -97,8 +97,14 @@
       statusBadge.classList.add('status-ready');
       statusText.textContent = `${indexed} rules ready`;
     } else if (phase === 'error') {
-      statusBadge.classList.add('status-error');
-      statusText.textContent = message ? `Error: ${message}` : 'Error';
+      if (indexed > 0) {
+        // DB has rules — search still works, only the update check failed
+        statusBadge.classList.add('status-ready');
+        statusText.textContent = `${indexed} rules ready (update check failed)`;
+      } else {
+        statusBadge.classList.add('status-error');
+        statusText.textContent = 'Error — see details below';
+      }
     } else if (phase === 'idle') {
       statusBadge.classList.add('status-loading');
       statusText.textContent = 'Starting…';
@@ -109,7 +115,8 @@
 
     // Progress bar section
     const isActive = phase === 'scanning' || phase === 'downloading';
-    progressSection.style.display = isActive ? 'block' : 'none';
+    const isError  = phase === 'error';
+    progressSection.style.display = (isActive || isError) ? 'block' : 'none';
 
     if (isActive) {
       progressMsg.textContent = message;
@@ -123,6 +130,11 @@
         progressDetail.textContent = '';
         progressIcon.textContent = '🔍';
       }
+    } else if (isError) {
+      progressIcon.textContent = '⚠️';
+      progressMsg.textContent = 'Update check failed';
+      progressBar.style.width = '0%';
+      progressDetail.textContent = message || 'Could not reach the AQMD website. Click "Check for Updates" to retry.';
     }
 
     // Stats bar on welcome screen
