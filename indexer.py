@@ -175,6 +175,7 @@ def run_indexing(on_complete=None):
 
         for i, rule in enumerate(pending):
             msg = f"Downloading Rule {rule['rule_number']}: {rule['title'][:60]}..."
+            logger.info(f"[{i + 1}/{total_pending}] {msg}")
             _update_state(current=i + 1, total=total_pending, message=msg)
 
             filename = _safe_filename(rule["pdf_url"])
