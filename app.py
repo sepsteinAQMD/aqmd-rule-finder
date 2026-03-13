@@ -185,6 +185,7 @@ def main():
         t.start()
 
     logger.info(f"AQMD Rule Finder running at http://127.0.0.1:{PORT}")
+    logger.info(f"Serving static files from: {app.static_folder}")
     app.run(host="127.0.0.1", port=PORT, debug=False, use_reloader=False)
 
 
